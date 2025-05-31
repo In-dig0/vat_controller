@@ -1,6 +1,6 @@
 # VIES Vat Controller
 Programma python che prende in input un file CSV con una lista di PIVA EU e ne controlla la validità
-richiamando le API VIES. Oltre a presentare i risutlati a video, il programma genera
+richiamando le **API VIES**. Oltre a presentare i risutlati a video, il programma genera
 un report dettagliato in PDF e, se previsto dal file di configurazione, salva i dati in un database
 di SQLite Cloud.
 
@@ -16,7 +16,7 @@ COD CLIENTE+RAGIONE SOCIALE;ISO;VAT
 07080436    |IPH FRANCE;FR;00353970262
 
 ## OUTPUT
-Il programm geenra un report PDF con l'esito della validità del controllo.
+Il programma genera un report PDF con l'esito dettagliato della validità del controllo.
 
 ## SINTASSI
 Sintassi da CLI:
