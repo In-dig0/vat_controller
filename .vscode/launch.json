@@ -1,0 +1,42 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        }
+        {
+            "name": "test1",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "externalConsole": false,
+            "args": [
+                "D:\\DEV\\Python\\Projects\\soap_client\\data"
+            ]
+            
+        }
+        {
+            "name": "test2",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "externalConsole": false,
+            "args": [
+                "-cD:\\DEV\\Python\\Projects\\soap_client\\config\\app_config_prd.ini"
+            ]
+            
+        }        
+    ]
+}
