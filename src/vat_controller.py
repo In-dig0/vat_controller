@@ -716,8 +716,7 @@ def main() -> None:
 
     # Check if the configuration file exists
     if check_file_existance(p_config_filepath) == False:
-        print(f"\n{p_config_filepath}: {chalk.red_bright('Configuration file not found!')}")
-        #logger.error(f'**Error: unable to open source folder {p_config_filepath}')
+        print(f'\n❌Error: unable to open source folder {p_config_filepath}')
         sys.exit(-255)
         
     # Read application configuration file
@@ -780,7 +779,7 @@ def main() -> None:
     # Check input parameters
     logger.info(f'| Check configuration file: {p_config_filepath}')   
     if check_folder_existance(source_folder) == False:
-        print(f"{source_folder}: {chalk.red_bright('Source directory does not exist!')}")
+        print(chalk.red_bright(f'\n❌ Error: unable to open source folder {source_folder}'))
         logger.error(f'**Error: unable to open source folder {source_folder}')
         sys.exit(-255)
     
@@ -789,7 +788,7 @@ def main() -> None:
     print(chalk.bg_grey(f'Check VIES service STATUS:'))
     funct_result = vow_check_status_service(vies_status_endpoint)
     if funct_result["status"] == False:
-        print(chalk.bg_red(f'\nVIES service STATUS unreachable -> {funct_result["message"]}'))
+        print(chalk.bg_red(f'\n❌ Error: VIES service STATUS unreachable -> {funct_result["message"]}'))
         logger.error(f'**Error: VIES service STATUS unreachable -> {funct_result["message"]}')        
         sys.exit(-255)
     
@@ -809,7 +808,7 @@ def main() -> None:
             try:
                 csvFile = csv.reader(filein, delimiter=';')
             except Exception as e:
-                print(f"{chalk.bg_red('Error opening CSV file!')}: {str(e)}")
+                print(chalk.bg_red(f'\n❌ Error: unable to open input CSV file {file_input}: {str(e)}'))
                 logger.error(f'**Error: unable to open input CSV file {file_input} -> {str(e)}')
                 sys.exit(-255)
 
@@ -922,7 +921,7 @@ def main() -> None:
                 # Open SQLiteCloud database connection
                 db_conn = modules.sqlite_cloud_module.open_database(db_config)
                 if db_conn == None:
-                    print(chalk.bg_red(f'**Error: Database connection failed!'))
+                    print(chalk.bg_red(f'\n❌ Error: Database connection failed!'))
                     logger.error(f'**Error: Database connection failed!')
                     sys.exit(-255)
                 else:
@@ -933,7 +932,7 @@ def main() -> None:
                 logger.info(f'| Save VIES check to SQLiteCloud...') 
                 f_return = modules.sqlite_cloud_module.insert_vies_records(db_conn, df_out)
                 if f_return["status"] == False:
-                    print(chalk.bg_red(f'**Error: unable to save VIES records to SQLite Cloud-> {f_return["message"]}'))
+                    print(chalk.bg_red(f'\n❌ Error: unable to save VIES records to SQLite Cloud-> {f_return["message"]}'))
                     logger.error(f'**Error: unable to save VIES records to SQLite Cloud -> {f_return["message"]}')        
                     sys.exit(-255)
                 else:
