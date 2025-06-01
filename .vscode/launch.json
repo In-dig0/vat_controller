@@ -34,7 +34,7 @@
             "justMyCode": true,
             "externalConsole": false,
             "args": [
-                "-cD:\\DEV\\Python\\Projects\\soap_client\\config\\app_config_prd.ini"
+                "-c D:\\DEV\\Python\\Projects\\vat_controller\\config\\app_config_prd.ini"
             ]
             
         }        

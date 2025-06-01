@@ -76,6 +76,32 @@ class Partner(BaseModel):
     vat_nr: str = Field(..., max_length=12)
 
 
+def setup_logging(log_filepath: str, log_filemode: str, log_level: str) -> None:
+    """ Function that sets up the logging configuration """
+    
+    # Converte la stringa del livello in costante logging
+    level_map = {
+        'DEBUG': logging.DEBUG,
+        'INFO': logging.INFO,
+        'WARNING': logging.WARNING,
+        'ERROR': logging.ERROR,
+        'CRITICAL': logging.CRITICAL
+    }
+    
+    # Ottiene il livello numerico, default a INFO se non riconosciuto
+    numeric_level = level_map.get(log_level.upper(), logging.INFO)
+    
+    logging.basicConfig(
+        level=numeric_level,  # <-- Usa il parametro invece di logging.INFO fisso
+        format='%(asctime)s - {%(filename)s}:{%(funcName)s} - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',  # <-- Formato data/ora personalizzato
+        handlers=[
+            logging.FileHandler(log_filepath, log_filemode)#,
+            #logging.StreamHandler()
+        ]
+    )
+
+
 def check_file_existance(path: pathlib) -> bool:
     """ Function tha returns True if a input string is a file and the file exists """    
     if os.path.exists(path) and os.path.isfile(path):
@@ -127,7 +153,7 @@ def read_app_config(config_path: Optional[Union[str, pathlib.Path]]) -> Dict:
     # Check if the configuration file exists
     if check_file_existance(config_path) == False:
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
-    
+
     # Read the configuration file
     try:
         # Read the configuration file
@@ -197,15 +223,16 @@ def read_app_config(config_path: Optional[Union[str, pathlib.Path]]) -> Dict:
 def vow_check_status_service(wsdl_endpoint) -> Dict:
     """ Function that checks the VIES service status """
 
+    logger = logging.getLogger("vies_check_vat")
     f_return = dict()
     try:
         client = Client(wsdl=wsdl_endpoint)
     except Exception as e:
         #print(f"{chalk.bg_red('VIES service STATUS unreachable!')}: {str(e)}")
+        logger.error(f"VIES service STATUS unreachable!")
         f_return["status"] = False
         f_return["message"] = str(e)
         return f_return
-
     try:
         result = client.service.checkStatus()
         vow_status = result['vow']['available']
@@ -213,6 +240,7 @@ def vow_check_status_service(wsdl_endpoint) -> Dict:
             print(f"Vies on the Web status: {chalk.bg_green('AVAILABLE')}")
         else:    
             print(f"Vies on the Web status: {chalk.bg_red('UNAVAILABLE')}")
+            logger.error(f"VIES service STATUS UNAVAILABLE!")
 
         member_elements = result['memberStates']['memberState']
         for element in member_elements:
@@ -222,6 +250,7 @@ def vow_check_status_service(wsdl_endpoint) -> Dict:
                 print(f"Member State: {element['countryCode']} --> {chalk.red_bright('UNAVAILABLE')}")
     except Exception as e:
         print(f"{chalk.bg_red('Error checking VIES status!')}: {str(e)}")
+        logger.error(f"Error checking VIES status: {str(e)}")
         f_return["status"] = False
         f_return["message"] = str(e)
         return f_return       
@@ -232,14 +261,17 @@ def vow_check_status_service(wsdl_endpoint) -> Dict:
 
 
 def vow_check_vat_validity_service(wsdl_endpoint: str, vat_country_code: str, vat_number: str, vat_description="") -> Dict[str, Dict]:
-    
+    """ Function that checks the VIES service for VAT validity """
+
     chk_vat_info = dict()
     chk_vat_return = dict()
+    logger = logging.getLogger("vies_check_vat")
     
     try:
         client = Client(wsdl=wsdl_endpoint)
     except Exception as errMsg:
         print(f"{chalk.bg_red('VIES service CHECK_VAT unreachable!')}: {str(errMsg)}")
+        logger.error(f"VIES service CHECK_VAT unreachable: {str(errMsg)}")
         chk_vat_return["status"] = False
         errMsg = 'VIES service CHECK_VAT unreachable!'
         chk_vat_return["message"] = str(errMsg)
@@ -249,6 +281,7 @@ def vow_check_vat_validity_service(wsdl_endpoint: str, vat_country_code: str, va
             result = client.service.checkVat(vat_country_code, vat_number)
 
         except Exception as errMsg:
+            logger = logger.error("Error checking VAT validity: %s", str(errMsg))
             today = date.today()
             chk_vat_info["vies_reqdate"] = today.strftime("%Y-%m-%d")
             chk_vat_info["vies_err_msg"] = str(errMsg)
@@ -281,6 +314,8 @@ def vow_check_vat_validity_service(wsdl_endpoint: str, vat_country_code: str, va
 
 def vies_check_vat_service(wsdl_endpoint: str, df_in: pd.DataFrame, sleep_time: int) -> pd.DataFrame:
     """ Function that checks the VIES service for VAT validity """
+
+    logger = logging.getLogger("vies_check_vat")
 
     # Check if the input DataFrame is empty
     if df_in.empty:
@@ -675,17 +710,9 @@ def main() -> None:
 
     # Decode CLI parameters: 
     cli_parameters = list()
-    # global p_app_logfile
-    # cli_param = decode_program_parameters()
-    # p_program_name = sys.argv[0]
-    # p_source_folder = cli_param.source_folder[0]   
-    # p_verbose_lev = cli_param.verbose_level
-    # p_dbg_logfile = cli_param.dbg_logfile
-    #p_app_logfile = cli_param.app_logfile
-
     cli_parameters = decode_program_parameters()
-    p_program_name = os.path.abspath(sys.argv[0])
-    p_config_filepath = os.path.abspath(cli_parameters.config_file)
+    p_program_name = pathlib.Path(os.path.abspath(sys.argv[0]))
+    p_config_filepath = pathlib.Path(cli_parameters.config_file.strip())
 
     # Check if the configuration file exists
     if check_file_existance(p_config_filepath) == False:
@@ -711,18 +738,21 @@ def main() -> None:
         sound_filepath = app_config['config_values']['sound_filepath'] 
     
     # Setup Logging
-    logger = logging.getLogger(__name__)
-    if log_level == 'DEBUG':  
-        logger.setLevel(logging.DEBUG)
-    elif log_level == 'INFO':
-        logger.setLevel(logging.INFO)
-    elif log_level == 'ERROR':
-        logger.setLevel(logging.ERROR)         
-    file_handler = logging.FileHandler(log_filepath, mode = 'a')
-    formatter = logging.Formatter('[%(asctime)s] - {%(filename)s:%(funcName)s} - %(message)s', datefmt='%Y-%d-%m %H:%M:%S')
+    setup_logging(log_filepath, 'w', log_level)  # Configurazione GLOBALE
+    logger = logging.getLogger("vies_check_vat")  # Ottieni il logger globale
 
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
+    # if log_level == 'DEBUG':  
+    #     logger.setLevel(logging.DEBUG)
+    # elif log_level == 'INFO':
+    #     logger.setLevel(logging.INFO)
+    # elif log_level == 'ERROR':
+    #     logger.setLevel(logging.ERROR)         
+    # file_handler = logging.FileHandler(log_filepath, mode = 'a')
+    # formatter = logging.Formatter('[%(asctime)s] - {%(filename)s:%(funcName)s} - %(message)s', datefmt='%Y-%d-%m %H:%M:%S')
+
+    # file_handler.setFormatter(formatter)
+    # logger.addHandler(file_handler)
+
     logger.info('| START PROGRAM!') 
 
     # Print program header to STDOUT  
@@ -885,6 +915,7 @@ def main() -> None:
                 # Save VIES check results to SQLiteCloud
                 print(chalk.bg_grey(f'\nSave data to SQLiteCloud:'))  
                 logger.info('| Open SQLiteCloud database...')
+                
                 # Load SQLiteCloud database configuration
                 db_config = modules.sqlite_cloud_module.load_database_config(env_filepath)
                 

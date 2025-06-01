@@ -5,49 +5,8 @@ from yachalk import chalk #Print to STDOUT using colors
 from datetime import datetime
 import pathlib # Pathlib for file path manipulations
 from typing import List, Dict, Optional, Union
+import logging
 
-# class DatabaseConfig(BaseSettings):
-#     model_config = SettingsConfigDict(
-#         env_file=".env",
-#         env_file_encoding="utf-8",
-#         case_sensitive=True#,
-#         #extra="forbid",
-#     )
-
-#     VIES_PROD_DATABASE_URL: str
-#     VIES_PROD_DATABASE_APIKEY: str
-
-# # ===== SOLUZIONE 1: Parametro nel costruttore (RACCOMANDATO) =====
-# class DatabaseConfig(BaseSettings):
-#     model_config = SettingsConfigDict(
-#         env_file=".env",  # Questo sarà sovrascritto se passiamo env_file nel costruttore
-#         env_file_encoding="utf-8",
-#         case_sensitive=True
-#     )
-
-#     VIES_PROD_DATABASE_URL: str
-#     VIES_PROD_DATABASE_APIKEY: str
-
-#     def __init__(self, env_file: Optional[Union[str, pathlib.Path]] = None, **kwargs):
-#         """
-#         Inizializza DatabaseConfig con un file .env personalizzabile.
-        
-#         Args:
-#             env_file: Percorso al file .env da utilizzare. Se None, usa ".env"
-#             **kwargs: Altri parametri da passare a BaseSettings
-#         """
-#         if env_file is not None:
-#             # Aggiorna la configurazione del modello con il nuovo env_file
-#             self.model_config = SettingsConfigDict(
-#                 env_file=str(env_file),
-#                 env_file_encoding="utf-8",
-#                 case_sensitive=True
-#             )
-        
-#         super().__init__(**kwargs)
-
-
-# ===== SOLUZIONE CORRETTA per Pydantic v2 =====
 class DatabaseConfig(BaseSettings):
     """
     Configurazione database che può essere inizializzata con file .env personalizzati.
@@ -84,7 +43,8 @@ class DatabaseConfig(BaseSettings):
         return DynamicDatabaseConfig()
 
 
-def load_database_config(env_filepath: pathlib.Path, print_mode: str = "OFF"):
+
+def load_database_config(env_filepath: pathlib.Path, print_mode: str = "OFF") -> DatabaseConfig:
     """
     Carica la configurazione del database dal file .env specificato.
     
@@ -107,6 +67,7 @@ def load_database_config(env_filepath: pathlib.Path, print_mode: str = "OFF"):
         
     except Exception as e:
         raise ValueError(f"**Error loading database configuration: {e}")
+        #logger.error(f"**Error loading database configuration: {e}")
     else:
         if print_mode == "ON":
             print(f"-> Database URL: {dbconfig.VIES_PROD_DATABASE_URL}")
@@ -116,14 +77,26 @@ def load_database_config(env_filepath: pathlib.Path, print_mode: str = "OFF"):
 
 
 def open_database(db_config, print_mode="OFF"):
+    """
+    Open a connection to the SQLite Cloud database using the provided configuration.
+    Args:
+        db_config: An instance of DatabaseConfig containing the database URL and API key.
+        print_mode: "ON" to print connection status, "OFF" to suppress output.        
+    Returns:
+        db_conn: A connection object to the SQLite Cloud database.
+    """
+
     #connection_string = db_info["db_url"] + db_info["db_api_key"]
     connection_string = db_config.VIES_PROD_DATABASE_URL + db_config.VIES_PROD_DATABASE_APIKEY
     try:
         db_conn = sqlitecloud.connect(connection_string)
     # Handle errors        
     except sqlitecloud.Error as errMsg:
+        #logger.error(f"**Error occurred while opening database: {errMsg}")
         raise ValueError(f"**Error occurred while opening database: {errMsg}")
+    # Check if the connection is success
     else:
+        #logger.debug(f"SQLite Cloud connection opened successfully: {db_conn}")
         if print_mode == "ON":
             print(chalk.yellow(f"-> SQLite Cloud connection opened successfully!"))
     return db_conn
@@ -133,6 +106,7 @@ def get_database_info(db_conn, print_mode="OFF"):
     try:
         cursor = db_conn.cursor()
     except Exception as errMsg:
+        #logger.error(f"**Error occurred while getting database info: {errMsg}")
         raise ValueError(f"**Error occurred while getting database info: {errMsg}")
     else:
         # Get Sqlite Cloud database version
@@ -141,6 +115,8 @@ def get_database_info(db_conn, print_mode="OFF"):
  
         if print_mode == "ON":
             print(chalk.yellow(f"-> SQLite Cloud version: {sqlite_version}"))
+        #logger.debug(f"SQLite Cloud version: {sqlite_version}")
+        # Close the cursor      
         cursor.close()
         
         return {
@@ -159,9 +135,10 @@ def execute_query(db_conn, query:str, values=None, print_mode="OFF"):
     except Exception as errMsg:
         raise ValueError(f"**Error occurred executing query {query}: {errMsg}")
     else:
+        db_conn.commit()
+        #logger.debug(f"Query executed successfully: {query}")
         if print_mode == "ON":        
-            print(chalk.yellow(f"-> Query executed successfully: {query}"))
-        db_conn.commit()    
+            print(chalk.yellow(f"-> Query executed successfully: {query}"))            
     finally:
         cursor.close()
 
@@ -233,15 +210,17 @@ def insert_vies_records(db_conn, df_input, print_mode="OFF") -> dict:
         cursor.executemany(sql_statement, data)    
     except Exception as errMsg:
         #raise ValueError(f"**Error occurred while inserting row {values}: {errMsg}")
+        #logger.error(f"**Error occurred while inserting rows: {errMsg}")
         if print_mode == "ON":
             print(chalk.bg_red(f"-> Error inserting rows: {data}"))
         f_return["status"] = False
         f_return["message"] = str(errMsg)
         return f_return   
-    else:
+    else: 
+        db_conn.commit()
+        #logger.debug(f"Rows inserted successfully: {data}")
         if print_mode == "ON":
-            print(chalk.yellow(f"-> Row inserted successfully: \n{data}"))  
-        db_conn.commit()        
+            print(chalk.yellow(f"-> Row inserted successfully: \n{data}"))                 
     finally:
         cursor.close()
     
@@ -256,13 +235,16 @@ def close_database(db_conn, print_mode="OFF"):
             db_conn.close()
         # Handle errors        
         except sqlitecloud.Error as errMsg:
+            #logger.error(f"**Error occurred while closing database connection {db_conn}: {errMsg}")
             raise ValueError(f"**Error occurred while closing database connection {db_conn}: {errMsg}")
         else:
+            #logger.debug(f"SQLite Cloud connection closed successfully: {db_conn}")
             if print_mode == "ON":
                 print(chalk.yellow(f"-> SQLite Cloud connection closed successfully: {db_conn}"))
 
 
 def main():
+    logger = logging.getLogger(__name__)
     # Load database configuration
     dbconfig = load_database_config(print_mode="ON")
     print(type(dbconfig))
