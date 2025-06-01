@@ -860,7 +860,8 @@ def main() -> None:
             df_err = pd.DataFrame()
             # Check if there are errors in the VIES service
             # If there are 'MS_MAX_CONCURRENT_REQ' errors, call the VIES service again
-            df_err = df_out[(df_out['vies_status'] == 'INVALID') & (df_out['vies_err_msg'] =='MS_MAX_CONCURRENT_REQ')] 
+            #df_err = df_out[(df_out['vies_status'] == 'INVALID') & (df_out['vies_err_msg'] =='MS_MAX_CONCURRENT_REQ')] 
+            df_err = df_out[(df_out['vies_status'] == 'INVALID') & (df_out['vies_err_msg'] != '')] 
             print(chalk.grey(f'\nNr. of processed records with error: {len(df_err)}\n'))           
             if len(df_err) > 0:
                 # Drop errors from df_out
