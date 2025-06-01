@@ -152,6 +152,7 @@ def read_app_config(config_path: Optional[Union[str, pathlib.Path]]) -> Dict:
     
     # Check if the configuration file exists
     if check_file_existance(config_path) == False:
+        print(chalk.red_bright(f'\n❌ Error: unable to open configuration file {config_path}'))
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
     # Read the configuration file
@@ -161,7 +162,7 @@ def read_app_config(config_path: Optional[Union[str, pathlib.Path]]) -> Dict:
               
     except configparser.Error as e:
         #raise configparser.Error(f"Error parsing configuration file {config_path}: {e}")
-        print(f"{chalk.bg_red('Error: configuration file not found!')}: {config_path}")
+        print(chalk.bg_red(f'\n❌ Error - configuration file not found: {config_path}'))
         config_values = {}
         config_return = {
             "status": False,
@@ -172,12 +173,12 @@ def read_app_config(config_path: Optional[Union[str, pathlib.Path]]) -> Dict:
         try:
             vies_checkvat_endpoint = config.get('VIES_ENDPOINTS', 'VIES_CHECK_VAT_SERVICE_ENDPOINT')
         except Exception as errMsg:
-            print(chalk.red_bright(f'Error: VIES_CHECK_VAT_SERVICE_ENDPOINT not found!'))
+            print(chalk.red_bright(f'\n❌ Error: VIES_CHECK_VAT_SERVICE_ENDPOINT not found!'))
             sys.exit(-255)
         try:
             vies_status_endpoint = config.get('VIES_ENDPOINTS', 'VIES_STATUS_SERVICE_ENDPOINT')
         except Exception as ErrMsg:
-            print(chalk.red_bright(f'Error: VIES_STATUS_SERVICE_ENDPOINT not found!'))
+            print(chalk.red_bright(f'\n❌ Error: VIES_STATUS_SERVICE_ENDPOINT not found!'))
             sys.exit(-255) 
         database_store_active = config.getboolean('DATABASE','database_store_active', fallback=False)
         env_filepath_default = os.path.join(pathlib.Path(sys.argv[0]).parent, '.env')
@@ -228,8 +229,8 @@ def vow_check_status_service(wsdl_endpoint) -> Dict:
     try:
         client = Client(wsdl=wsdl_endpoint)
     except Exception as e:
-        #print(f"{chalk.bg_red('VIES service STATUS unreachable!')}: {str(e)}")
-        logger.error(f"VIES service STATUS unreachable!")
+        print(chalk.bg_red(f'\n❌ Error - VIES service STATUS unreachable: {str(e)}'))
+        logger.error(f"**Error: VIES service STATUS unreachable!")
         f_return["status"] = False
         f_return["message"] = str(e)
         return f_return
@@ -237,20 +238,20 @@ def vow_check_status_service(wsdl_endpoint) -> Dict:
         result = client.service.checkStatus()
         vow_status = result['vow']['available']
         if vow_status == True:
-            print(f"Vies on the Web status: {chalk.bg_green('AVAILABLE')}")
+            print(f"\n✅ Vies on the Web status: {chalk.bg_green('AVAILABLE')}")
         else:    
-            print(f"Vies on the Web status: {chalk.bg_red('UNAVAILABLE')}")
+            print(f"\n❌ Vies on the Web status: {chalk.bg_red('UNAVAILABLE')}")
             logger.error(f"VIES service STATUS UNAVAILABLE!")
 
         member_elements = result['memberStates']['memberState']
         for element in member_elements:
             if element['availability'] == "Available":
-                print(f"Member State: {element['countryCode']} --> {chalk.green_bright('AVAILABLE')}")
+                print(f"✅ Member State: {element['countryCode']} --> {chalk.green_bright('AVAILABLE')}")
             else:
-                print(f"Member State: {element['countryCode']} --> {chalk.red_bright('UNAVAILABLE')}")
+                print(f"❌ Member State: {element['countryCode']} --> {chalk.red_bright('UNAVAILABLE')}")
     except Exception as e:
-        print(f"{chalk.bg_red('Error checking VIES status!')}: {str(e)}")
-        logger.error(f"Error checking VIES status: {str(e)}")
+        print(chalk.bg_red(f'\n❌ Error checking VIES status! {str(e)}'))
+        logger.error(f"** Error checking VIES status: {str(e)}")
         f_return["status"] = False
         f_return["message"] = str(e)
         return f_return       
@@ -270,8 +271,8 @@ def vow_check_vat_validity_service(wsdl_endpoint: str, vat_country_code: str, va
     try:
         client = Client(wsdl=wsdl_endpoint)
     except Exception as errMsg:
-        print(f"{chalk.bg_red('VIES service CHECK_VAT unreachable!')}: {str(errMsg)}")
-        logger.error(f"VIES service CHECK_VAT unreachable: {str(errMsg)}")
+        print(chalk.bg_red(f'\n❌ VIES service CHECK_VAT unreachable! {str(errMsg)}'))
+        logger.error(f"**Error: VIES service CHECK_VAT unreachable: {str(errMsg)}")
         chk_vat_return["status"] = False
         errMsg = 'VIES service CHECK_VAT unreachable!'
         chk_vat_return["message"] = str(errMsg)
@@ -281,7 +282,7 @@ def vow_check_vat_validity_service(wsdl_endpoint: str, vat_country_code: str, va
             result = client.service.checkVat(vat_country_code, vat_number)
 
         except Exception as errMsg:
-            logger = logger.error("Error checking VAT validity: %s", str(errMsg))
+            #logger = logger.error("**Error checking VAT validity: %s", str(errMsg))
             today = date.today()
             chk_vat_info["vies_reqdate"] = today.strftime("%Y-%m-%d")
             chk_vat_info["vies_err_msg"] = str(errMsg)
@@ -319,7 +320,7 @@ def vies_check_vat_service(wsdl_endpoint: str, df_in: pd.DataFrame, sleep_time: 
 
     # Check if the input DataFrame is empty
     if df_in.empty:
-        print(chalk.red_bright("Input DataFrame is empty. No records to process."))
+        print(chalk.red_bright("\n❌ Input DataFrame is empty. No records to process."))
         return df_in
 
     # Fase 1: Raggruppo per paese e assegno un indice progressivo a ciascun record di ogni paese
@@ -341,7 +342,7 @@ def vies_check_vat_service(wsdl_endpoint: str, df_in: pd.DataFrame, sleep_time: 
             print(f"[{index+1}] Check validity: {row['in_ccode']}{row['in_vatnr']}")
             vies_rec = vow_check_vat_validity_service(wsdl_endpoint, row['in_ccode'], row['in_vatnr'], row['in_pdesc'])
             if vies_rec["vies_vat_return"]["status"] == False:
-                print(f'Error processing row {index}: {vies_rec["vies_vat_return"]["message"]}')
+                print(f'\n❌ Error processing row {index}: {vies_rec["vies_vat_return"]["message"]}')
                 df_in.at[index, 'vies_err_msg'] = vies_rec["vies_vat_return"]["message"]
             else:
                 # Update dataram columns with VIES data
@@ -582,7 +583,7 @@ def create_pdf_report(output_pdf_name, vat_records_list):
                 
                 current_y += line_spacing  # Move down for the next line
             else:
-                print(f"Warning (Record {i+1}): key '{key}' not found in the provided dictionary.")
+                print(f"\n⚠ Warning (Record {i+1}): key '{key}' not found in the provided dictionary.")
         
         # Add separator line after EACH record (including the last one)
         separator_width = page_width - 2 * content_x_margin
@@ -716,7 +717,7 @@ def main() -> None:
 
     # Check if the configuration file exists
     if check_file_existance(p_config_filepath) == False:
-        print(f'\n❌Error: unable to open source folder {p_config_filepath}')
+        print(chalk.red_bright(f'\n❌ Error: unable to open configuration file {p_config_filepath}'))
         sys.exit(-255)
         
     # Read application configuration file
@@ -739,18 +740,6 @@ def main() -> None:
     # Setup Logging
     setup_logging(log_filepath, 'w', log_level)  # Configurazione GLOBALE
     logger = logging.getLogger("vies_check_vat")  # Ottieni il logger globale
-
-    # if log_level == 'DEBUG':  
-    #     logger.setLevel(logging.DEBUG)
-    # elif log_level == 'INFO':
-    #     logger.setLevel(logging.INFO)
-    # elif log_level == 'ERROR':
-    #     logger.setLevel(logging.ERROR)         
-    # file_handler = logging.FileHandler(log_filepath, mode = 'a')
-    # formatter = logging.Formatter('[%(asctime)s] - {%(filename)s:%(funcName)s} - %(message)s', datefmt='%Y-%d-%m %H:%M:%S')
-
-    # file_handler.setFormatter(formatter)
-    # logger.addHandler(file_handler)
 
     logger.info('| START PROGRAM!') 
 
@@ -776,8 +765,9 @@ def main() -> None:
     print(chalk.gray(f'Output folder      : {pathlib.Path(dest_folder)}'))
     print()
 
-    # Check input parameters
+
     logger.info(f'| Check configuration file: {p_config_filepath}')   
+    # Check input parameters
     if check_folder_existance(source_folder) == False:
         print(chalk.red_bright(f'\n❌ Error: unable to open source folder {source_folder}'))
         logger.error(f'**Error: unable to open source folder {source_folder}')
@@ -907,7 +897,7 @@ def main() -> None:
                 }
             
             modules.reportlab_module.create_vat_controller_pdf(df_out, pdf_out_file, report_tab_columns, report_title, report_cover_vars)
-            print(chalk.cyan_bright(f'PDF Report created: {pdf_out_file}'))
+            print(chalk.green_bright(f'✅ PDF Report created: {pdf_out_file}'))
             logger.info(f'| PDF Report created: {os.path.basename(pdf_out_file)}')
  
             if len(df_out)>0 and database_store_active == True:
@@ -936,7 +926,7 @@ def main() -> None:
                     logger.error(f'**Error: unable to save VIES records to SQLite Cloud -> {f_return["message"]}')        
                     sys.exit(-255)
                 else:
-                    print(chalk.cyan_bright(f'VIES records saved to SQLite Cloud!'))
+                    print(chalk.green_bright(f'✅ VIES records saved to SQLite Cloud!'))
                     logger.info(f'| VIES records saved to SQLite Cloud!')
 
                 logger.info('| Close SQLiteCloud database...')
