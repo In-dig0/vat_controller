@@ -3,7 +3,7 @@ Programma python che prende in input una lista di PIVA EU (file CSV) e ne contro
 richiamando le API del **VIES** (Vat Information Exchange System). Oltre a presentare i risutlati a video, il programma genera un report dettagliato in PDF e, se previsto dal file di configurazione, salva i dati in un database di SQLite Cloud.
 
 ## API VIES
-Il sito [API VIES](https://ec.europa.eu/taxation_customs/vies/#/technical-information) fornisce la documentazione per l'utilizzo delle API (REST o SOAP) messe a disposizione 
+Il sito [API VIES](https://ec.europa.eu/taxation_customs/vies/#/technical-information) fornisce la documentazione per l'utilizzo delle API (REST o SOAP) del VIES.
 
 Il programma python utilizza i servizi **SOAP** del VIES, con i realtivi WSDL endpoint:
 - [Check Vat Service](https://ec.europa.eu/taxation_customs/vies/services/checkVatService.wsdl): to verify the validity of a VAT number;
