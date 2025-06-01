@@ -12,7 +12,7 @@ Il tracciato del file CSV (separatore ";") è il seguente:
 2) Codice PIVA
 
 Esempio:
-COD CLIENTE+RAGIONE SOCIALE;ISO;VAT
+COD CLIENTE+RAGIONE SOCIALE;ISO;VAT  
 07080436    |IPH FRANCE;FR;00353970262
 
 ## OUTPUT
@@ -20,4 +20,5 @@ Il programma genera un report PDF con l'esito dettagliato della validità del co
 
 ## SINTASSI
 Sintassi da CLI:
+'''
 python.exe .\src\vat_controller.py <file_config>
