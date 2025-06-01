@@ -20,5 +20,5 @@ Il programma genera un report PDF con l'esito dettagliato della validità del co
 
 ## SINTASSI
 Sintassi da CLI:
-'''
+```bash
 python.exe .\src\vat_controller.py <file_config>
