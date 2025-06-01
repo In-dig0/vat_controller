@@ -6,6 +6,7 @@ from datetime import datetime
 import pathlib # Pathlib for file path manipulations
 from typing import List, Dict, Optional, Union
 import logging
+import os
 
 class DatabaseConfig(BaseSettings):
     """
@@ -55,24 +56,39 @@ def ensure_logging_configured() -> bool:
     
     # Se non ci sono handler configurati
     if not root_logger.handlers:
-        # Configurazione di emergenza
+        # Configurazione di emergenza - SOLO se necessario
+        log_fallback = os.path.join(pathlib.Path(__file__).parent, 'sqlite_module_fallback.log')
         logging.basicConfig(
-            level=logging.INFO,
+            level=logging.DEBUG,  # Livello più alto per ridurre i messaggi
             format='%(asctime)s - %(filename)s:%(funcName)s - %(levelname)s - %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S',
             handlers=[
-                logging.FileHandler('sqlite_module.log')#,  # File di backup
-                #logging.StreamHandler()  # Console
+                logging.FileHandler(log_fallback, mode='w', encoding='utf-8')
             ]
         )
-        logger.warning("Logging non configurato dal programma principale. Usando configurazione di fallback.")
+        # Non loggiamo subito per evitare messaggi durante l'import
         return False
     return True
 
 # Crea il logger per questo modulo
 logger = logging.getLogger(__name__)
+
+def get_logger() -> logging.Logger:
+    """
+    Restituisce il logger del modulo, configurandolo se necessario.
+    Questa funzione può essere chiamata dalle funzioni che necessitano di logging.
+    """
+    current_logger = logging.getLogger(__name__)
+    
+    # Verifica se il logging è configurato solo quando necessario
+    if not logging.getLogger().handlers:
+        ensure_logging_configured()
+        current_logger.warning("Logging configurato automaticamente dal modulo sqlite_cloud_module")
+    
+    return current_logger
+
 # Verifica la configurazione all'avvio del modulo
-ensure_logging_configured()
+#ensure_logging_configured()
 
 def load_database_config(env_filepath: pathlib.Path, print_mode: str = "OFF") -> DatabaseConfig:
     """
@@ -88,6 +104,14 @@ def load_database_config(env_filepath: pathlib.Path, print_mode: str = "OFF") ->
     Raises:
         ValueError: Se c'è un errore nel caricamento della configurazione
     """
+    
+    logger = get_logger()  # Ottieni il logger quando serve
+    
+    # Verifica se il file esiste
+    if not env_filepath.exists():
+        raise FileNotFoundError(f"**File not found: {env_filepath}")
+        logger.error(f"**File not found: {env_filepath}")
+    
     try:
         # Usa il metodo classmethod (RACCOMANDATO)
         dbconfig = DatabaseConfig.from_env_file(env_filepath)        
@@ -112,7 +136,13 @@ def open_database(db_config, print_mode="OFF") -> sqlitecloud.Connection:
         db_conn: A connection object to the SQLite Cloud database.
     """
 
-    #connection_string = db_info["db_url"] + db_info["db_api_key"]
+    logger = get_logger()  # Ottieni il logger quando serve
+
+    # Check if the database configuration is valid
+    if not isinstance(db_config, DatabaseConfig):
+        raise ValueError("Invalid database configuration provided. Expected an instance of DatabaseConfig.")
+        logger.error("Invalid database configuration provided. Expected an instance of DatabaseConfig.")
+
     connection_string = db_config.VIES_PROD_DATABASE_URL + db_config.VIES_PROD_DATABASE_APIKEY
     try:
         db_conn = sqlitecloud.connect(connection_string)
@@ -139,6 +169,9 @@ def get_database_info(db_conn, print_mode="OFF") -> Dict[str, Optional[str]]:
     Raises:
         ValueError: If an error occurs while retrieving database information.
     """
+    
+    logger = get_logger()  # Ottieni il logger quando serve
+    
     try:
         cursor = db_conn.cursor()
     except Exception as errMsg:
@@ -174,6 +207,12 @@ def execute_query(db_conn, query:str, values=None, print_mode="OFF") -> None:
         ValueError: If an error occurs while executing the query.
     """
     
+    logger = get_logger()  # Ottieni il logger quando serve
+    
+    if not isinstance(query, str):
+        raise ValueError("Query must be a string.")
+        logger.error("Query must be a string.")
+
     cursor = db_conn.cursor()
     try:
         if values == None:
@@ -204,6 +243,18 @@ def insert_vies_record(db_conn, row, print_mode="OFF") -> dict:
     Returns:
         A dictionary with the status and message of the operation.
     """
+    
+    logger = get_logger()  # Ottieni il logger quando serve
+    
+    if not isinstance(row, dict):
+        raise ValueError("Input row must be a dictionary containing VIES record data.") 
+    if not all(key in row for key in ['vat_country_code', 'vat_number', 'vat_description',
+                                                   'vies_country_code', 'vies_vatnr', 
+                                                   'vies_company_name', 'vies_status', 
+                                                   'vies_err_msg', 'vies_reqdate']):
+        raise ValueError("Input row is missing required keys for VIES record data.")
+    
+    
     f_return = dict()
     cursor = db_conn.cursor()
     query = """INSERT INTO partners (partner_id, partner_name, v_land, v_vatnr, v_cname, v_status, v_errmsg, v_reqdate, cpudate)
@@ -253,6 +304,22 @@ def insert_vies_records(db_conn, df_input, print_mode="OFF") -> dict:
     Returns:
         A dictionary with the status and message of the operation.
     """
+
+    logger = get_logger()  # Ottieni il logger quando serve
+    
+    if df_input.empty:
+        logger.warning("Input DataFrame is empty. No records to insert.")
+        return {"status": False, "message": "Input DataFrame is empty. No records to insert."}    
+    
+    # Check if the DataFrame has the required columns
+    required_columns = ['in_ccode', 'in_vatnr', 'in_pdesc',
+                        'vies_ccode', 'vies_vatnr', 
+                        'vies_company_name', 'vies_status', 
+                        'vies_err_msg', 'vies_reqdate']
+    for col in required_columns:
+        if col not in df_input.columns:
+            raise ValueError(f"Input DataFrame is missing required column: {col}")
+            logger.error(f"Input DataFrame is missing required column: {col}")
 
     cursor = db_conn.cursor()
     data = list()
