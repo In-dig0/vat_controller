@@ -899,7 +899,7 @@ def main() -> None:
             
             modules.reportlab_module.create_vat_controller_pdf(df_out, pdf_out_file, report_tab_columns, report_title, report_cover_vars)
             print(chalk.green_bright(f'✅ PDF Report created: {pdf_out_file}'))
-            logger.info(f'| PDF Report created: {os.path.basename(pdf_out_file)}')
+            logger.info(f'| PDF Report created: {pdf_out_file}')
  
             if len(df_out)>0 and database_store_active == True:
                 # Save VIES check results to SQLiteCloud
