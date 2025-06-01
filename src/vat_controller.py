@@ -583,7 +583,7 @@ def create_pdf_report(output_pdf_name, vat_records_list):
                 
                 current_y += line_spacing  # Move down for the next line
             else:
-                print(f"\n⚠ Warning (Record {i+1}): key '{key}' not found in the provided dictionary.")
+                print(f"\n⚠️ Warning (Record {i+1}): key '{key}' not found in the provided dictionary.")
         
         # Add separator line after EACH record (including the last one)
         separator_width = page_width - 2 * content_x_margin
