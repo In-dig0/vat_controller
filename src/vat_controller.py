@@ -337,7 +337,7 @@ def vies_check_vat_service(wsdl_endpoint: str, df_in: pd.DataFrame, sleep_time: 
     total_records = len(df_in)
     # Ciclo per ogni riga del dataframe
     # Creo la barra di avanzamento
-    with tqdm(total=total_records, desc="Elabororation...", colour='CYAN') as pbar:
+    with tqdm(total=total_records, desc="Processing...", colour='BLUE') as pbar:
         for index, row in df_distribuito.iterrows():
             print(f"[{index+1}] Check validity: {row['in_ccode']}{row['in_vatnr']}")
             vies_rec = vow_check_vat_validity_service(wsdl_endpoint, row['in_ccode'], row['in_vatnr'], row['in_pdesc'])
